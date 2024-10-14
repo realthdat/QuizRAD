@@ -35,22 +35,24 @@ def check_answer():
     if selected_option.lower() == correct_answer.lower():  # So sánh không phân biệt chữ hoa/thường
         score += 1
         result_label.config(text="Correct! Your score: " + str(score), fg="green")
+        root.after(2000, next_question)  # Tự động chuyển câu sau 2 giây nếu đúng
     else:
         result_label.config(text=f"Wrong! The correct answer is: {current_correct_answer}", fg="red")
+        next_button.config(state="normal")  # Kích hoạt nút "Next" khi trả lời sai
+        submit_button.config(state="disabled")  # Vô hiệu hóa nút "Submit" khi trả lời sai
     
     # Cập nhật điểm số hiển thị
     score_label.config(text=f"Score: {score}")
-    
-    current_question_index += 1
-    if current_question_index < len(questions):
-        root.after(2000, load_question)  # Tự động tải câu hỏi tiếp theo sau 2 giây
-    else:
-        show_result()  # Nếu không còn câu hỏi, hiển thị kết quả cuối cùng
 
-# Hàm hiển thị kết quả cuối cùng
+# Hàm hiển thị kết quả cuối cùng và cho phép chọn bài kiểm tra khác
 def show_result():
     messagebox.showinfo("Result", f"Your final score is {score}/{len(questions)}")
-    root.quit()
+    
+    # Hiển thị nút "Chọn bài kiểm tra khác" để người dùng chọn lại bài kiểm tra
+    choose_file_button.config(state="normal")  # Kích hoạt nút chọn file để chọn bài kiểm tra khác
+    result_label.config(text="Quiz finished. Please choose another test.")
+    next_button.config(state="disabled")  # Vô hiệu hóa nút "Next"
+    submit_button.config(state="disabled")  # Vô hiệu hóa nút "Submit"
 
 # Hàm tải câu hỏi tiếp theo và xáo trộn các câu trả lời
 def load_question():
@@ -70,10 +72,27 @@ def load_question():
         
         radio_var.set(None)  # Reset lại lựa chọn
         result_label.config(text="")  # Reset kết quả trước đó
+
+        # Vô hiệu hóa nút "Next" và kích hoạt lại nút "Submit"
+        next_button.config(state="disabled")
+        submit_button.config(state="disabled")
     else:
         show_result()  # Hiển thị kết quả cuối cùng nếu hết câu hỏi
 
-# Hàm chọn file câu hỏi
+# Hàm xử lý khi bấm nút "Next"
+def next_question():
+    global current_question_index
+    current_question_index += 1
+    load_question()
+
+# Hàm để kiểm tra xem đã chọn đáp án chưa và kích hoạt nút Submit
+def on_option_selected(*args):
+    if radio_var.get():  # Nếu có một lựa chọn nào được chọn
+        submit_button.config(state="normal")  # Kích hoạt nút Submit
+    else:
+        submit_button.config(state="disabled")  # Vô hiệu hóa nút Submit
+
+# Hàm chọn file câu hỏi mới và reset trạng thái
 def choose_file():
     file_path = filedialog.askopenfilename(title="Select a Quiz File", filetypes=(("Text files", "*.txt"), ("All files", "*.*")))
     
@@ -88,6 +107,9 @@ def choose_file():
             score_label.config(text=f"Score: {score}")
             load_question()
 
+            # Vô hiệu hóa nút "Chọn bài kiểm tra khác" trong khi người dùng đang làm bài kiểm tra
+            choose_file_button.config(state="disabled")
+
 # Biến toàn cục cho chỉ số câu hỏi, đáp án đúng và điểm số
 current_question_index = 0
 score = 0
@@ -96,7 +118,7 @@ current_correct_answer = ""
 # Tạo cửa sổ giao diện Tkinter
 root = tk.Tk()
 root.title("Quiz Application - Requirements Analysis and Design")
-root.geometry("800x600")
+root.geometry("900x600")
 root.configure(bg='#f0f0f0')  # Background màu sáng
 
 # Tùy chỉnh font chữ cho các nhãn và nút
@@ -119,14 +141,23 @@ score_label.pack(pady=5)
 
 # Tạo các lựa chọn cho câu trả lời (Radio buttons)
 radio_var = tk.StringVar()
+radio_var.trace("w", on_option_selected)  # Theo dõi thay đổi của radio_var để gọi hàm on_option_selected
 radio_buttons = []
 for i in range(4):
     rb = tk.Radiobutton(root, text="", variable=radio_var, value="", font=font_answer, bg='#f0f0f0', fg='#333', activebackground='#ddd', activeforeground='#000')
     rb.pack(anchor="w", padx=10, pady=5)  # Thêm pady để tạo khoảng cách dọc giữa các nút
     radio_buttons.append(rb)
 
-submit_button = tk.Button(root, text="Submit", command=check_answer, font=button_font_style, bg='#4CAF50', fg='white', relief="raised", borderwidth=5, highlightthickness=2, highlightbackground="#333")
-submit_button.pack(pady=20)
+# Frame để chứa hai nút Submit và Next
+button_frame = tk.Frame(root, bg='#f0f0f0')
+button_frame.pack(pady=20)
+
+submit_button = tk.Button(button_frame, text="Submit", command=check_answer, font=button_font_style, bg='#4CAF50', fg='white', relief="raised", borderwidth=5, highlightthickness=2, highlightbackground="#333", state="disabled")
+submit_button.grid(row=0, column=0, padx=20)
+
+# Nút Next để chuyển sang câu hỏi tiếp theo
+next_button = tk.Button(button_frame, text="Next", command=next_question, font=button_font_style, bg='#f0f0f0', fg='black', relief="raised", borderwidth=5, highlightthickness=2, highlightbackground="#333", state="disabled")
+next_button.grid(row=0, column=1, padx=20)
 
 # Hiển thị kết quả mỗi câu hỏi (đúng hay sai)
 result_label = tk.Label(root, text="", font=font_style, bg='#f0f0f0', fg='#333')
